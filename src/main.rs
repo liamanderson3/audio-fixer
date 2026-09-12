@@ -152,7 +152,7 @@ fn main() -> Result<()> {
         cli.extensions.clone()
     };
 
-    // 3. Scan inputs
+    // 3. Scan inputs recursively
     let scan_msg = format!("🔍 Scanning inputs for video files ({})", exts.join(", ").yellow());
     println!("{}", scan_msg);
     logger.log(&scan_msg);
@@ -222,6 +222,7 @@ fn main() -> Result<()> {
                     cli.output_dir.as_deref(),
                     &cli.suffix,
                     should_overwrite,
+                    &cli.inputs,
                 );
 
                 // Check if target output file already exists and is already converted
@@ -526,6 +527,7 @@ fn compute_output_path(
     output_dir: Option<&Path>,
     suffix: &str,
     overwrite: bool,
+    scanned_inputs: &[PathBuf],
 ) -> PathBuf {
     let file_stem = input
         .file_stem()
@@ -537,9 +539,23 @@ fn compute_output_path(
         .unwrap_or("")
         .to_lowercase();
 
-    let target_dir = output_dir.map(PathBuf::from).unwrap_or_else(|| {
+    let target_dir = if let Some(out_base) = output_dir {
+        // Find matching input root to preserve relative subfolder directory structure
+        let mut rel_parent = None;
+        for root in scanned_inputs {
+            if let Ok(rel) = input.strip_prefix(root) {
+                rel_parent = rel.parent();
+                break;
+            }
+        }
+        if let Some(rel_p) = rel_parent {
+            out_base.join(rel_p)
+        } else {
+            out_base.to_path_buf()
+        }
+    } else {
         input.parent().unwrap_or(Path::new(".")).to_path_buf()
-    });
+    };
 
     let is_mp4 = input_ext == "mp4";
 
@@ -559,7 +575,7 @@ mod tests {
     #[test]
     fn test_compute_output_path_avi_to_mp4() {
         let input = Path::new("/path/to/movie.avi");
-        let out = compute_output_path(input, None, "", false);
+        let out = compute_output_path(input, None, "", false, &[]);
         assert_eq!(out, PathBuf::from("/path/to/movie.mp4"));
     }
 
@@ -567,21 +583,30 @@ mod tests {
     fn test_compute_output_path_mkv_with_output_dir() {
         let input = Path::new("/path/to/movie.mkv");
         let out_dir = Path::new("/output/folder");
-        let out = compute_output_path(input, Some(out_dir), "", false);
+        let out = compute_output_path(input, Some(out_dir), "", false, &[]);
         assert_eq!(out, PathBuf::from("/output/folder/movie.mp4"));
     }
 
     #[test]
     fn test_compute_output_path_mp4_default_suffix() {
         let input = Path::new("/path/to/movie.mp4");
-        let out = compute_output_path(input, None, "", false);
+        let out = compute_output_path(input, None, "", false, &[]);
         assert_eq!(out, PathBuf::from("/path/to/movie_4.1.mp4"));
     }
 
     #[test]
     fn test_compute_output_path_custom_suffix() {
         let input = Path::new("/path/to/movie.mkv");
-        let out = compute_output_path(input, None, "_converted", false);
+        let out = compute_output_path(input, None, "_converted", false, &[]);
         assert_eq!(out, PathBuf::from("/path/to/movie_converted.mp4"));
+    }
+
+    #[test]
+    fn test_compute_output_path_preserve_subfolders() {
+        let root = PathBuf::from("/downloads");
+        let input = Path::new("/downloads/TV/Season 1/Ep1.mkv");
+        let out_dir = Path::new("/output");
+        let out = compute_output_path(input, Some(out_dir), "", false, &[root]);
+        assert_eq!(out, PathBuf::from("/output/TV/Season 1/Ep1.mp4"));
     }
 }
