@@ -543,23 +543,13 @@ fn compute_output_path(
 
     let is_mp4 = input_ext == "mp4";
 
-    let primary_filename = if is_mp4 && suffix.is_empty() && !overwrite {
+    let filename = if is_mp4 && suffix.is_empty() && !overwrite {
         format!("{}_4.1.mp4", file_stem)
     } else {
         format!("{}{}.mp4", file_stem, suffix)
     };
 
-    let primary_path = target_dir.join(&primary_filename);
-
-    if primary_path.exists() && !overwrite {
-        let alt_filename = format!("{}_{}{}.mp4", file_stem, input_ext, suffix);
-        let alt_path = target_dir.join(alt_filename);
-        if !alt_path.exists() {
-            return alt_path;
-        }
-    }
-
-    primary_path
+    target_dir.join(filename)
 }
 
 #[cfg(test)]

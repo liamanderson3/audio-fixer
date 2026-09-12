@@ -4,8 +4,8 @@ use tempfile::tempdir;
 #[test]
 fn test_end_to_end_conversion() {
     let dir = tempdir().unwrap();
-    let avi_5_1 = dir.path().join("sample_5.1.avi");
-    let mkv_5_1 = dir.path().join("sample_5.1.mkv");
+    let avi_5_1 = dir.path().join("sample_5.1_avi.avi");
+    let mkv_5_1 = dir.path().join("sample_5.1_mkv.mkv");
     let mkv_2_0 = dir.path().join("sample_2.0.mkv");
     let mp4_2_0 = dir.path().join("sample_2.0.mp4");
     let out_dir = dir.path().join("converted");
@@ -76,7 +76,7 @@ fn test_end_to_end_conversion() {
     assert!(output.status.success(), "audio-fixer failed: {}", String::from_utf8_lossy(&output.stderr));
 
     // 3. Verify output files
-    let out_avi_mp4 = out_dir.join("sample_5.1.mp4");
+    let out_avi_mp4 = out_dir.join("sample_5.1_avi.mp4");
     let out_mkv_mp4 = out_dir.join("sample_5.1_mkv.mp4");
     let out_mkv_2_0_mp4 = out_dir.join("sample_2.0.mp4");
 
